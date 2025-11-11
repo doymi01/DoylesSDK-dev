@@ -1,0 +1,50 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Upgrade build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build setuptools wheel setuptools_scm
+
+      - name: Build wheel only
+        run: python -m build --wheel
+
+      - name: Upload built wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-wheels
+          path: dist/*
+
+      - name: Create GitHub Release
+        id: release_tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.release_tag.outputs.tag }}
+          name: ${{ steps.release_tag.outputs.tag }}
+          prerelease: false
+          generate_release_notes: true
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

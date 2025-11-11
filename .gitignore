@@ -1,0 +1,23 @@
+# exclude everything
+*
+# allow subdirectories
+!*/
+# allow git stuff
+!/.gitignore
+!/.gitmodules
+!/.github/workflows/*.yaml
+!/.github/workflows/*.yml
+# project files
+!/pyproject.toml
+!/README.md
+!/src/**
+!/tests/**
+
+# remove junk
+source
+_version.py
+__pycache__
+*.pyc
+*.egg-info
+*.egg
+*.old

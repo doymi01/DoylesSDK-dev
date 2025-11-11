@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=65", "setuptools_scm[toml]>=6.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "test_lib"
+authors = [
+    {name = "Michael Doyle", email = "doymi01@gmail.com"},
+]
+description = "The Magic Script"
+requires-python = ">=3.9"
+dependencies = [
+    "chardet",
+    "psutil",
+    "requests",
+    "splunk-sdk>=2",
+    "splunk-appinspect>=3.0.3",
+    "urllib3~=1.0"
+]
+dynamic = ["version", "readme"]
+
+[project.optional-dependencies]
+prod = [
+    "doyles_sdk @ git+https://github.com/doymi01/DoylesSDK.git@release"
+]
+dev = [
+  "doyles_sdk @ git+ssh://github.com/doymi01/DoylesSDK-dev.git@stable",
+  "pytest",
+  "pytest-cov",
+  "build"
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+# addopts = "--cov=src/doyles_magic_tool_kit --cov-report=html --cov-report=term"
+# addopts = "--cov=src/doyles_magic_tool_kit --cov-report=html"
+testpaths = ["tests"]
+norecursedirs = ["disabled"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.setuptools.packages.find]
+where = ["src"]  # list of folders that contain the packages (["."] by default)
+include = ["dummy_module*"]  # package names should match these glob patterns (["*"] by default)
+exclude = []  # exclude packages matching these glob patterns (empty by default)
+namespaces = true  # to disable scanning PEP 420 namespaces (true by default)
+
+[tool.setuptools.package-data]
+# "magic_script" = ["factories/*.json"]
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"], content-type = "text/markdown"}
+
+[tool.setuptools_scm]
+write_to = "_version.py"
+tag_regex = "^v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)$"
+git_describe_command = "git describe --dirty --tags --match v[0-9]*"
+fallback_version = "0.0.0"
+
+[project.scripts]
+# magic = "magic_script.cli:main"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+include = ["src"]
+exclude = ["tests"]
+reportDeprecated = "none"
+reportAttributeAccessIssue = "information"
+reportOptionalSubscript = 'information'

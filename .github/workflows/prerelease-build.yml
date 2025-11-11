@@ -1,0 +1,58 @@
+name: Build Prerelease
+
+on:
+  workflow_run:
+    workflows: ["Run Tests"] # <-- Name of the workflow to depend on
+    types:
+      - completed # only trigger after it finishes
+
+permissions:
+  contents: write
+
+jobs:
+  build-prerelease:
+    if: >
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          !startsWith(github.event.workflow_run.head_branch, 'v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Upgrade build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build setuptools wheel setuptools_scm
+
+      - name: Build wheel only
+        run: python -m build --wheel
+
+      - name: Upload built wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-wheels
+          path: dist/*
+
+      - name: Tag prerelease (ignored by SCM)
+        id: prerelease_tag
+        run: |
+          PRERELEASE_TAG="preview-$(python -m setuptools_scm)"
+          git tag $PRERELEASE_TAG
+          git push origin $PRERELEASE_TAG
+          echo "tag=$PRERELEASE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Pre-Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.prerelease_tag.outputs.tag }}
+          name: ${{ steps.prerelease_tag.outputs.tag }}
+          prerelease: true
+          generate_release_notes: false
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

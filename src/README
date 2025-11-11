@@ -1,0 +1,6 @@
+Put the source modules here
+update pyproject.yaml
+
+[tool.setuptools.packages.find]
+where = ["src"]  # list of folders that contain the packages (["."] by default)
+include = ["<<dirname>>*"]  # package names should match these glob patterns (["*"] by default)
