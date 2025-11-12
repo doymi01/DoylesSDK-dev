@@ -12,6 +12,8 @@
 !/README.md
 !/src/**
 !/tests/**
+!/.zed/**
+!/.vscode/**
 
 # remove junk
 source
