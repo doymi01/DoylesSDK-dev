@@ -1,1 +1,1 @@
-**Project Template**
+**Doyles SDK**

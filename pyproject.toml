@@ -3,28 +3,25 @@ requires = ["setuptools>=65", "setuptools_scm[toml]>=6.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "test_lib"
+name = "doyles_sdk"
 authors = [
     {name = "Michael Doyle", email = "doymi01@gmail.com"},
 ]
-description = "The Magic Script"
+description = "Common Application Framework"
 requires-python = ">=3.9"
 dependencies = [
     "chardet",
+    "dnspython",
+    "importlib_metadata",
+    "keyring",
+    "lxml",
     "psutil",
-    "requests",
-    "splunk-sdk>=2",
-    "splunk-appinspect>=3.0.3",
-    "urllib3~=1.0"
+    "requests"
 ]
 dynamic = ["version", "readme"]
 
 [project.optional-dependencies]
-prod = [
-    "doyles_sdk @ git+https://github.com/doymi01/DoylesSDK.git@release"
-]
 dev = [
-  "doyles_sdk @ git+ssh://github.com/doymi01/DoylesSDK-dev.git@stable",
   "pytest",
   "pytest-cov",
   "build"
@@ -43,7 +40,7 @@ filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.setuptools.packages.find]
 where = ["src"]  # list of folders that contain the packages (["."] by default)
-include = ["dummy_module*"]  # package names should match these glob patterns (["*"] by default)
+include = ["doyles_sdk*"]  # package names should match these glob patterns (["*"] by default)
 exclude = []  # exclude packages matching these glob patterns (empty by default)
 namespaces = true  # to disable scanning PEP 420 namespaces (true by default)
 
@@ -60,7 +57,7 @@ git_describe_command = "git describe --dirty --tags --match v[0-9]*"
 fallback_version = "0.0.0"
 
 [project.scripts]
-# magic = "magic_script.cli:main"
+doyles = "doyles_sdk.cli:main"
 
 [tool.pyright]
 venvPath = "."
