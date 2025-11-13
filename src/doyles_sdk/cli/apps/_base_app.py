@@ -2,6 +2,7 @@ import argparse
 import logging
 import multiprocessing as mp
 import multiprocessing.synchronize
+import os
 import signal
 import sys
 import threading
@@ -14,6 +15,7 @@ from concurrent.futures import (
 )
 from datetime import datetime, timedelta
 from functools import wraps
+from io import TextIOWrapper
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional, Union
 
@@ -50,10 +52,10 @@ class DoyleApp(metaclass=InfoMeta):
     THREAD_LIMIT = 500
     PROCESS_LIMIT = 100
 
-
     # --- Lazy ---
     _thread_lock: Union[threading.Lock, None] = None
     _mp_lock: Union[multiprocessing.synchronize.Lock, None] = None
+    _results_file_path: Union[os.PathLike, None] = None
 
     def __init__(self, caller: Optional[str] = None, **kwargs):
         self._exiting = False
@@ -134,12 +136,13 @@ class DoyleApp(metaclass=InfoMeta):
         if self._thread_lock is None:
             self._thread_lock = threading.Lock()
         return self._thread_lock
-    
+
     @property
     def mp_lock(self):
         if self._mp_lock is None:
             self._mp_lock = mp.Lock()
         return self._mp_lock
+
     # @property
     # def secrets(self) -> AppSecrets:
     #     """
@@ -439,6 +442,38 @@ class DoyleApp(metaclass=InfoMeta):
     def post_init_worker(cls):
         """Do nothing by default but allow classes to perform other initialization without modifying the init_worker_logging"""
         return
+
+    def _get_file_handle(self, path: os.PathLike) -> TextIOWrapper:
+        """
+        Return the persistent file handle for the current process.
+        Creates it on first call per process.
+
+        Args:
+            path (str): Path to the log file.
+
+        Returns:
+            object: File handle.
+        """
+        if not hasattr(self, "_fh"):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            self._fh = open(path, "a", buffering=1)
+        return self._fh
+
+    def log_result(self, result: dict) -> None:
+        """
+        Append a message to the persistent log file safely across threads and processes.
+
+        Args:
+            message (str): Message to log.
+        """
+        import json
+
+        if self._results_file_path:
+            fh = self._get_file_handle(self._results_file_path)
+            with self.mp_lock:  # process-level safety
+                with self.thread_lock:  # thread-level safety
+                    fh.write(f"{json.dumps(result)}\n")
+                    fh.flush()
 
     def run_with_workers(
         self,

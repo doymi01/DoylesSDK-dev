@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import threading
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 
 class PickleMixin:
@@ -13,24 +13,23 @@ class PickleMixin:
     as an iterable of attribute names to remove from instance state.
     """
 
-    _exclude_from_pickle: Tuple[str, ...] = ()
+    _exclude_from_pickle: Tuple[str, ...] = tuple()
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         # allow cooperative MRO: call super if it defines __getstate__, else copy __dict__
-        state = (
-            super().__getstate__()
-            if hasattr(super(), "__getstate__")
-            else self.__dict__.copy()
-        )
-        for attr in getattr(self, "_exclude_from_pickle", ()):
+        parent_getstate = getattr(super(PickleMixin, self), "__getstate__", None)
+        state = parent_getstate() if parent_getstate else self.__dict__.copy()
+        for attr in getattr(self, "_exclude_from_pickle", tuple()):
             state.pop(attr, None)
         return state
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]):
         # allow cooperative MRO: call super then update state
-        if hasattr(super(), "__setstate__"):
-            super().__setstate__(state)
+        parent_setstate = getattr(super(PickleMixin, self), "__setstate__", None)
+        if parent_setstate:
+            parent_setstate(state)
         else:
+            # update directly if no parent __setstate__ exists
             self.__dict__.update(state)
 
 

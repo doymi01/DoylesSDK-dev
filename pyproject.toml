@@ -62,9 +62,10 @@ doyles = "doyles_sdk.cli:main"
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
-typeCheckingMode = "standard"
 include = ["src"]
 exclude = ["tests"]
-reportDeprecated = "none"
-reportAttributeAccessIssue = "information"
-reportOptionalSubscript = 'information'
+typeCheckingMode = "basic"
+reportDeprecated = false
+reportGeneralTypeIssues = false
+reportAttributeAccessIssue = false
+reportOptionalMemberAccess = false

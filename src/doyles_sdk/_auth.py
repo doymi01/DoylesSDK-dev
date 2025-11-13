@@ -2,7 +2,7 @@ import json
 import os
 import time
 from threading import RLock
-from typing import Optional
+from typing import Optional, Union
 
 import keyring
 from cryptography.fernet import Fernet, InvalidToken
@@ -17,7 +17,7 @@ from keyring.errors import InitError, NoKeyringError
 class SecureStore:
     """Singleton secure credential store with in-memory write-through cache."""
 
-    _instance: "SecureStore | None" = None
+    _instance: Union["SecureStore", None] = None
     _lock = RLock()
 
     def __new__(cls, service_name: str = "myapp", fallback_file: str | None = None):
