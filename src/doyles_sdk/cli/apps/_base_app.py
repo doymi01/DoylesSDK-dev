@@ -378,8 +378,7 @@ class DoyleApp(metaclass=InfoMeta):
 
         return usage
 
-    @classmethod
-    def args_post_process(cls, parser):
+    def args_post_process(self, parser):
         """
         Subclasses override to validate args after parsing.
         """
