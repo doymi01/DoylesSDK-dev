@@ -159,13 +159,13 @@ class MakeHfRoutingCliApp(DoyleApp):
             "# transforms.conf",
             "",
             "[add_forwarder_name]",
-            f"INGEST_EVAL = {prefix}_parsed_by=splunk_server",
+            f"INGEST_EVAL = {prefix}:parsed_by=splunk_server",
             "",
             "[add_meta_tags]",
-            f'INGEST_EVAL = {prefix}_origin:=coalesce({prefix}_origin, "ON_PREM")',
+            f'INGEST_EVAL = {prefix}:origin:=coalesce({prefix}:origin, "ON_PREM")',
             "",
             "[preserve_original]",
-            f"INGEST_EVAL = $field:{prefix}_orig_source$:=coalesce( {prefix}_orig_source, source ), $field:{prefix}_orig_sourcetype$:=coalesce( {prefix}_orig_sourcetype, sourcetype ), $field:{prefix}_orig_host$:=coalesce( {prefix}_orig_host, host ), $field:{prefix}_orig_index$:=coalesce( {prefix}_orig_index, index )",
+            f"INGEST_EVAL = $field:{prefix}:orig_source$:=coalesce( {prefix}:orig_source, source ), $field:{prefix}:orig_sourcetype$:=coalesce( {prefix}:orig_sourcetype, sourcetype ), $field:{prefix}:orig_host$:=coalesce( {prefix}:orig_host, host ), $field:{prefix}:orig_index$:=coalesce( {prefix}:orig_index, index )",
             "",
         ]
 
@@ -266,7 +266,13 @@ class MakeHfRoutingCliApp(DoyleApp):
         with open(app_local / "limits.conf", "w") as f:
             f.write("\n".join(limits))
 
-        return app, "\n".join(inputs), "\n".join(outputs), "\n".join(server)
+        return (
+            app,
+            "\n".join(inputs),
+            "\n".join(outputs),
+            "\n".join(server),
+            "\n".join(limits),
+        )
 
     def selective_routing(self, onprem: str, cloud: str):
         """Build selective routing app"""
@@ -339,35 +345,35 @@ class MakeHfRoutingCliApp(DoyleApp):
             "# transforms.conf",
             "",
             "[add_forwarder_name]",
-            f"INGEST_EVAL = {prefix}_parsed_by=splunk_server",
+            f"INGEST_EVAL = {prefix}:parsed_by=splunk_server",
             "",
             "[add_meta_tags]",
-            f"""INGEST_EVAL = {prefix}_origin:=coalesce('{prefix}_origin', if(match(lower(host), "splunkcloud(?:gc|fed)?\\.com$"), "SPLUNK_CLOUD_PLATFORM", "UNKNOWN"))""",
+            f"""INGEST_EVAL = {prefix}:origin:=coalesce('{prefix}:origin', if(match(lower(host), "splunkcloud(?:gc|fed)?\\.com$"), "SPLUNK_CLOUD_PLATFORM", "UNKNOWN"))""",
             "",
             "[preserve_original]",
-            f"INGEST_EVAL = $field:{prefix}_orig_source$:=coalesce( {prefix}_orig_source, source ), $field:{prefix}_orig_sourcetype$:=coalesce( {prefix}_orig_sourcetype, sourcetype ), $field:{prefix}_orig_host$:=coalesce( {prefix}_orig_host, host ), $field:{prefix}_orig_index$:=coalesce( {prefix}_orig_index, index )",
+            f"INGEST_EVAL = $field:{prefix}:orig_source$:=coalesce( {prefix}:orig_source, source ), $field:{prefix}:orig_sourcetype$:=coalesce( {prefix}:orig_sourcetype, sourcetype ), $field:{prefix}:orig_host$:=coalesce( {prefix}:orig_host, host ), $field:{prefix}:orig_index$:=coalesce( {prefix}:orig_index, index )",
             "",
         ]
 
         fields = [
             "# fields.conf",
             "",
-            f"[{prefix}_origin]",
+            f"[{prefix}:origin]",
             "INDEXED = 1",
             "",
-            f"[{prefix}_parsed_by]",
+            f"[{prefix}:parsed_by]",
             "INDEXED = 1",
             "",
-            f"[{prefix}_orig_source]",
+            f"[{prefix}:orig_source]",
             "INDEXED = 1",
             "",
-            f"[{prefix}_orig_sourcetype]",
+            f"[{prefix}:orig_sourcetype]",
             "INDEXED = 1",
             "",
-            f"[{prefix}_orig_host]",
+            f"[{prefix}:orig_host]",
             "INDEXED = 1",
             "",
-            f"[{prefix}_orig_index]",
+            f"[{prefix}:orig_index]",
             "INDEXED = 1",
             "",
         ]
@@ -384,7 +390,7 @@ class MakeHfRoutingCliApp(DoyleApp):
         with open(app_default / "fields.conf", "w") as f:
             f.write("\n".join(fields))
 
-        return app, "\n".join(props), "\n".join(transforms)
+        return app, "\n".join(props), "\n".join(transforms), "\n".join(fields)
 
     def run(self):
         """
@@ -408,13 +414,18 @@ class MakeHfRoutingCliApp(DoyleApp):
         print(props)
         print(transforms)
 
-        app, inputs, outputs, server = self.intermediate_base(args.splunkcloud)
+        app, inputs, outputs, server, limits = self.intermediate_base(args.splunkcloud)
         print(app)
         print(inputs)
         print(outputs)
         print(server)
+        print(limits)
 
-        self.cloud_app(prefix=args.prefix)
+        app, props, transforms, fields = self.cloud_app(prefix=args.prefix)
+        print(app)
+        print(props)
+        print(transforms)
+        print(fields)
 
 
 # The following is required boilerplate
