@@ -194,7 +194,7 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
 
         # Attempt 1: UTF-8
         try:
-            data = raw_data.decode("utf-8-sig")
+            data = raw_data.decode("utf-8-sig").lstrip("\ufeff")
             logger.info("%s decoded as utf-8")
             return data
         except UnicodeDecodeError as e:
