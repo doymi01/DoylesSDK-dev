@@ -198,9 +198,7 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
             logger.info("%s decoded as utf-8")
             return data
         except UnicodeDecodeError as e:
-            logger.warning(
-                "%s: %s attempting character set detection", e.reason, filename
-            )
+            logger.info("%s: %s attempting character set detection", e.reason, filename)
 
         # Attempt 2: chardet detection
         detected = chardet.detect(raw_data)
@@ -209,9 +207,7 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
             try:
                 return raw_data.decode(encoding)
             except UnicodeDecodeError as e:
-                logger.warning(
-                    "%s: %s falling back to windows-1252", e.reason, filename
-                )
+                logger.info("%s: %s falling back to windows-1252", e.reason, filename)
 
         # Attempt 3: Windows-1252 fallback
         try:
