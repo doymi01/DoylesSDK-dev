@@ -195,7 +195,7 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
         # Attempt 1: UTF-8
         try:
             data = raw_data.decode("utf-8-sig").lstrip("\ufeff")
-            logger.info("%s decoded as utf-8")
+            logger.info("%s decoded as utf-8", filename)
             return data
         except UnicodeDecodeError as e:
             logger.info("%s: %s attempting character set detection", e.reason, filename)
@@ -205,7 +205,9 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
         encoding = detected.get("encoding")
         if encoding:
             try:
-                return raw_data.decode(encoding)
+                data = raw_data.decode(encoding)
+                logger.info("%s decoded as %s", filename, encoding)
+                return data
             except UnicodeDecodeError as e:
                 logger.info("%s: %s falling back to windows-1252", e.reason, filename)
 
