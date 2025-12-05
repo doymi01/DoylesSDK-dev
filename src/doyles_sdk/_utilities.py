@@ -5,11 +5,13 @@ import logging
 import os
 from collections.abc import Iterable
 from copy import deepcopy
+from dataclasses import fields, is_dataclass
 from fnmatch import fnmatch
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, get_args, get_origin
 from urllib.parse import quote, unquote
 
 import chardet
+from _typeshed import DataclassInstance
 
 from doyles_sdk._metaclass import InfoMeta
 from doyles_sdk._mixins import SingletonMixin
@@ -37,6 +39,64 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
 
     __slots__ = ()
     noop = NoOp()
+
+    @staticmethod
+    def dataclass_from_dict(
+        t_cls: Union[DataclassInstance, type[DataclassInstance]], data
+    ):
+        if data is None:
+            return None
+
+        if not is_dataclass(t_cls):
+            return data
+
+        kwargs = {}
+
+        for f in fields(t_cls):
+            field_value = data.get(f.name)
+            field_type = f.type
+            origin = get_origin(field_type)
+
+            if field_value is None:
+                kwargs[f.name] = None
+                continue
+
+            if origin is Union:
+                args = get_args(field_type)
+                non_none = [a for a in args if a is not type(None)]
+                if len(non_none) == 1:
+                    field_type = non_none[0]
+                    origin = get_origin(field_type)
+
+            if is_dataclass(field_type):
+                kwargs[f.name] = Doyles.dataclass_from_dict(field_type, field_value)
+                continue
+
+            if origin is list:
+                item_type = get_args(field_type)[0]
+                if is_dataclass(item_type):
+                    kwargs[f.name] = [
+                        Doyles.dataclass_from_dict(item_type, i) for i in field_value
+                    ]
+                else:
+                    kwargs[f.name] = list(field_value)
+                continue
+
+            if origin is dict:
+                key_t, val_t = get_args(field_type)
+                if is_dataclass(val_t):
+                    kwargs[f.name] = {
+                        k: Doyles.dataclass_from_dict(val_t, v)
+                        for k, v in field_value.items()
+                    }
+                else:
+                    kwargs[f.name] = dict(field_value)
+                continue
+
+            kwargs[f.name] = field_value
+
+        ctor = t_cls if isinstance(t_cls, type) else type(t_cls)
+        return ctor(**kwargs)
 
     @staticmethod
     def flatten_dict(
