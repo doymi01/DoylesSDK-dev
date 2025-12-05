@@ -7,14 +7,26 @@ from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import fields, is_dataclass
 from fnmatch import fnmatch
-from typing import Any, Callable, Dict, List, Optional, Union, get_args, get_origin
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Union,
+    get_args,
+    get_origin,
+)
 from urllib.parse import quote, unquote
 
 import chardet
-from _typeshed import DataclassInstance
 
 from doyles_sdk._metaclass import InfoMeta
 from doyles_sdk._mixins import SingletonMixin
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
 
 logger = logging.getLogger(__name__)
 
