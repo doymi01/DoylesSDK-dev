@@ -53,9 +53,7 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
     noop = NoOp()
 
     @staticmethod
-    def dataclass_from_dict(
-        t_cls: Union[DataclassInstance, type[DataclassInstance]], data
-    ):
+    def dataclass_from_dict(t_cls, data):
         if data is None:
             return None
 
@@ -95,7 +93,15 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
                 continue
 
             if origin is dict:
-                key_t, val_t = get_args(field_type)
+                args = get_args(field_type)
+
+                # Handle untyped Dict
+                if not args:
+                    kwargs[f.name] = dict(field_value)
+                    continue
+
+                key_t, val_t = args
+
                 if is_dataclass(val_t):
                     kwargs[f.name] = {
                         k: Doyles.dataclass_from_dict(val_t, v)
