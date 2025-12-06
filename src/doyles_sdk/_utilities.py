@@ -14,6 +14,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Type,
     Union,
     get_args,
     get_origin,
@@ -53,7 +54,13 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
     noop = NoOp()
 
     @staticmethod
-    def dataclass_from_dict(t_cls, data):
+    def dataclass_from_dict(
+        t_cls: Union[DataclassInstance, Type[DataclassInstance]], data: Any
+    ):
+        """
+        Recursively convert a dict into a dataclass instance,
+        including nested dataclasses, lists, and dicts.
+        """
         if data is None:
             return None
 
@@ -63,11 +70,15 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
         kwargs = {}
 
         for f in fields(t_cls):
-            field_value = data.get(f.name)
+            if f.name not in data:
+                kwargs[f.name] = None
+                continue
+
+            field_value = data[f.name]
             field_type = f.type
             origin = get_origin(field_type)
 
-            # Handle optional / Union types
+            # Handle Optional / Union types
             if origin is Union:
                 args = get_args(field_type)
                 non_none = [a for a in args if a is not type(None)]
@@ -75,7 +86,7 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
                     field_type = non_none[0]
                     origin = get_origin(field_type)
 
-            # If value is missing, use None
+            # If value is None
             if field_value is None:
                 kwargs[f.name] = None
                 continue
@@ -88,7 +99,6 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
             # List of dataclasses or scalars
             if origin is list:
                 item_type = get_args(field_type)[0]
-
                 if is_dataclass(item_type):
                     kwargs[f.name] = [
                         Doyles.dataclass_from_dict(item_type, i) for i in field_value
@@ -97,13 +107,26 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
                     kwargs[f.name] = list(field_value)
                 continue
 
-            # Dict of dataclasses or scalars
+            # Dict of dataclasses, lists, or scalars
             if origin is dict:
                 key_type, val_type = (
                     get_args(field_type) if get_args(field_type) else (Any, Any)
                 )
 
-                if is_dataclass(val_type):
+                val_origin = get_origin(val_type)
+
+                if val_origin is list:
+                    # Dict[str, List[Dataclass]]
+                    item_type = get_args(val_type)[0]
+                    if is_dataclass(item_type):
+                        kwargs[f.name] = {
+                            k: [Doyles.dataclass_from_dict(item_type, i) for i in v]
+                            for k, v in field_value.items()
+                        }
+                    else:
+                        kwargs[f.name] = {k: list(v) for k, v in field_value.items()}
+                elif is_dataclass(val_type):
+                    # Dict[str, Dataclass]
                     kwargs[f.name] = {
                         k: Doyles.dataclass_from_dict(val_type, v)
                         for k, v in field_value.items()
