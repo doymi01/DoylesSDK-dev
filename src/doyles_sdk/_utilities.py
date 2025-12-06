@@ -67,10 +67,7 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
             field_type = f.type
             origin = get_origin(field_type)
 
-            if field_value is None:
-                kwargs[f.name] = None
-                continue
-
+            # Handle optional / Union types
             if origin is Union:
                 args = get_args(field_type)
                 non_none = [a for a in args if a is not type(None)]
@@ -78,12 +75,20 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
                     field_type = non_none[0]
                     origin = get_origin(field_type)
 
+            # If value is missing, use None
+            if field_value is None:
+                kwargs[f.name] = None
+                continue
+
+            # Nested dataclass
             if is_dataclass(field_type):
                 kwargs[f.name] = Doyles.dataclass_from_dict(field_type, field_value)
                 continue
 
+            # List of dataclasses or scalars
             if origin is list:
                 item_type = get_args(field_type)[0]
+
                 if is_dataclass(item_type):
                     kwargs[f.name] = [
                         Doyles.dataclass_from_dict(item_type, i) for i in field_value
@@ -92,25 +97,22 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
                     kwargs[f.name] = list(field_value)
                 continue
 
+            # Dict of dataclasses or scalars
             if origin is dict:
-                args = get_args(field_type)
+                key_type, val_type = (
+                    get_args(field_type) if get_args(field_type) else (Any, Any)
+                )
 
-                # Handle untyped Dict
-                if not args:
-                    kwargs[f.name] = dict(field_value)
-                    continue
-
-                key_t, val_t = args
-
-                if is_dataclass(val_t):
+                if is_dataclass(val_type):
                     kwargs[f.name] = {
-                        k: Doyles.dataclass_from_dict(val_t, v)
+                        k: Doyles.dataclass_from_dict(val_type, v)
                         for k, v in field_value.items()
                     }
                 else:
                     kwargs[f.name] = dict(field_value)
                 continue
 
+            # Scalar
             kwargs[f.name] = field_value
 
         ctor = t_cls if isinstance(t_cls, type) else type(t_cls)
