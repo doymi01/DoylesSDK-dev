@@ -70,8 +70,14 @@ class MakeHfRoutingCliApp(DoyleApp):
         )
         parser.add_argument(
             "--prefix",
-            help="Variable prefis for the added fields",
+            help="Variable prefix for the added fields",
             default="md",
+        )
+        parser.add_argument("--classic", help="Classic stack", action="store_true")
+        parser.add_argument(
+            "--private-link",
+            help="Create Private Link outputs",
+            action="store_true",
         )
 
     @classmethod
@@ -165,7 +171,7 @@ class MakeHfRoutingCliApp(DoyleApp):
             f'INGEST_EVAL = {prefix}:origin:=coalesce({prefix}:origin, "ON_PREM")',
             "",
             "[preserve_original]",
-            f"INGEST_EVAL = $field:{prefix}:orig_source$:=coalesce( {prefix}:orig_source, source ), $field:{prefix}:orig_sourcetype$:=coalesce( {prefix}:orig_sourcetype, sourcetype ), $field:{prefix}:orig_host$:=coalesce( {prefix}:orig_host, host ), $field:{prefix}:orig_index$:=coalesce( {prefix}:orig_index, index )",
+            f"INGEST_EVAL = $field:{prefix}:orig_source$:=coalesce({prefix}:orig_source, source), $field:{prefix}:orig_sourcetype$:=coalesce({prefix}:orig_sourcetype, sourcetype), $field:{prefix}:orig_host$:=coalesce({prefix}:orig_host, host), $field:{prefix}:orig_index$:=coalesce({prefix}:orig_index, index)",
             "",
         ]
 
@@ -351,7 +357,7 @@ class MakeHfRoutingCliApp(DoyleApp):
             f"""INGEST_EVAL = {prefix}:origin:=coalesce('{prefix}:origin', if(match(lower(host), "splunkcloud(?:gc|fed)?\\.com$"), "SPLUNK_CLOUD_PLATFORM", "UNKNOWN"))""",
             "",
             "[preserve_original]",
-            f"INGEST_EVAL = $field:{prefix}:orig_source$:=coalesce( {prefix}:orig_source, source ), $field:{prefix}:orig_sourcetype$:=coalesce( {prefix}:orig_sourcetype, sourcetype ), $field:{prefix}:orig_host$:=coalesce( {prefix}:orig_host, host ), $field:{prefix}:orig_index$:=coalesce( {prefix}:orig_index, index )",
+            f"INGEST_EVAL = $field:{prefix}:orig_source$:=coalesce({prefix}:orig_source, source), $field:{prefix}:orig_sourcetype$:=coalesce({prefix}:orig_sourcetype, sourcetype), $field:{prefix}:orig_host$:=coalesce({prefix}:orig_host, host), $field:{prefix}:orig_index$:=coalesce({prefix}:orig_index, index)",
             "",
         ]
 
@@ -414,7 +420,9 @@ class MakeHfRoutingCliApp(DoyleApp):
         print(props)
         print(transforms)
 
-        app, inputs, outputs, server, limits = self.intermediate_base(args.splunkcloud)
+        app, inputs, outputs, server, limits = self.intermediate_base(
+            args.splunkcloud, classic=args.classic, private_link=args.private_link
+        )
         print(app)
         print(inputs)
         print(outputs)
