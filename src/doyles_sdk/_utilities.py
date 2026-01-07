@@ -53,161 +53,27 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
     __slots__ = ()
     noop = NoOp()
 
-    # @staticmethod
-    # def dataclass_from_dict(
-    #     t_cls: Union[DataclassInstance, Type[DataclassInstance]], data: Any
-    # ):
-    #     """
-    #     Recursively convert a dict into a dataclass instance,
-    #     including nested dataclasses, lists, and dicts.
-    #     """
-    #     if data is None:
-    #         return None
-
-    #     # Scalar or non-dataclass type → return raw
-    #     if not is_dataclass(t_cls):
-    #         return data
-
-    #     kwargs = {}
-
-    #     for f in fields(t_cls):
-    #         field_value = data.get(f.name)
-    #         field_type = f.type
-    #         origin = get_origin(field_type)
-
-    #         # -------------------------
-    #         # Handle Optional / Union
-    #         # -------------------------
-    #         if origin is Union:
-    #             args = get_args(field_type)
-    #             non_none = [a for a in args if a is not type(None)]
-    #             if len(non_none) == 1:
-    #                 field_type = non_none[0]
-    #                 origin = get_origin(field_type)
-
-    #         # If JSON payload explicitly contains None
-    #         if field_value is None:
-    #             kwargs[f.name] = None
-    #             continue
-
-    #         # -------------------------
-    #         # Nested dataclass
-    #         # -------------------------
-    #         if is_dataclass(field_type):
-    #             kwargs[f.name] = Doyles.dataclass_from_dict(field_type, field_value)
-    #             continue
-
-    #         # -------------------------
-    #         # List[…]
-    #         # -------------------------
-    #         if origin is list:
-    #             (item_type,) = get_args(field_type)
-
-    #             if not isinstance(field_value, list):
-    #                 raise TypeError(
-    #                     f"Expected list for field '{f.name}', got {type(field_value)}"
-    #                 )
-
-    #             if is_dataclass(item_type):
-    #                 # ---- PATCH: generic from_raw() hook ----
-    #                 if hasattr(item_type, "from_raw") and callable(item_type.from_raw):
-    #                     kwargs[f.name] = [
-    #                         item_type.from_raw(item) for item in field_value
-    #                     ]
-    #                 else:
-    #                     kwargs[f.name] = [
-    #                         Doyles.dataclass_from_dict(item_type, item)
-    #                         for item in field_value
-    #                     ]
-    #             else:
-    #                 # List[scalar]
-    #                 kwargs[f.name] = list(field_value)
-
-    #             continue
-
-    #         # -------------------------
-    #         # Dict[…]
-    #         # -------------------------
-    #         if origin is dict:
-    #             args = get_args(field_type)
-    #             key_type, val_type = args if args else (Any, Any)
-
-    #             val_origin = get_origin(val_type)
-    #             result_dict = {}
-
-    #             for k, v in field_value.items():
-    #                 # Value can legitimately be None
-    #                 if v is None:
-    #                     result_dict[k] = None
-    #                     continue
-
-    #                 # Case: Dict[str, List[…]]
-    #                 if val_origin is list:
-    #                     (item_type,) = get_args(val_type)
-
-    #                     if not isinstance(v, list):
-    #                         raise TypeError(
-    #                             f"Expected list for dict key '{k}', got {type(v)}"
-    #                         )
-
-    #                     if is_dataclass(item_type):
-    #                         # ---- PATCH: generic from_raw() hook ----
-    #                         if hasattr(item_type, "from_raw") and callable(
-    #                             item_type.from_raw
-    #                         ):
-    #                             result_dict[k] = [
-    #                                 item_type.from_raw(item) for item in v
-    #                             ]
-    #                         else:
-    #                             result_dict[k] = [
-    #                                 Doyles.dataclass_from_dict(item_type, item)
-    #                                 for item in v
-    #                             ]
-    #                     else:
-    #                         result_dict[k] = list(v)
-
-    #                     continue
-
-    #                 # Case: Dict[str, Dataclass]
-    #                 if is_dataclass(val_type):
-    #                     result_dict[k] = Doyles.dataclass_from_dict(val_type, v)
-    #                     continue
-
-    #                 # Dict[str, scalar]
-    #                 result_dict[k] = v
-
-    #             kwargs[f.name] = result_dict
-    #             continue
-
-    #         # -------------------------
-    #         # Scalar
-    #         # -------------------------
-    #         kwargs[f.name] = field_value
-
-    #     # Instantiate the dataclass
-    #     ctor = t_cls if isinstance(t_cls, type) else type(t_cls)
-    #     return ctor(**kwargs)
-
     @staticmethod
-    def dataclass_from_dict(t_cls: Union[Type[Any], Any], data: Any) -> Any:
+    def dataclass_from_dict(t_cls: Union[Any, Type[Any]], data: Any):
         """
-        Recursively convert a dict/list structure into a dataclass instance,
+        Recursively convert a dict into a dataclass instance,
         including nested dataclasses, lists, and dicts.
-
-        If a dataclass defines `from_raw(cls, raw)`, that is called instead of
-        automatic construction. This supports any nested structure (list, dict, etc.).
+        Supports dataclasses that define their own `from_raw` method.
         """
         if data is None:
             return None
 
-        # Scalar / non-dataclass type → return raw
+        # Scalar or non-dataclass type → return raw
         if not is_dataclass(t_cls):
             return data
 
-        # Use custom loader if present
-        from_raw = getattr(t_cls, "from_raw", None)
-        if callable(from_raw):
-            return from_raw(data)
+        # If the dataclass defines from_raw, delegate entirely
+        if hasattr(t_cls, "from_raw") and callable(getattr(t_cls, "from_raw")):
+            # Only special-case loaders: must return a dataclass
+            result = t_cls.from_raw(data)
+            if not is_dataclass(result):
+                raise TypeError(f"{t_cls.__name__}.from_raw did not return a dataclass")
+            return result
 
         kwargs = {}
         for f in fields(t_cls):
@@ -223,7 +89,7 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
                     field_type = non_none[0]
                     origin = get_origin(field_type)
 
-            # None → leave as None
+            # None values
             if field_value is None:
                 kwargs[f.name] = None
                 continue
@@ -233,7 +99,7 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
                 kwargs[f.name] = Doyles.dataclass_from_dict(field_type, field_value)
                 continue
 
-            # List
+            # List[…]
             if origin is list:
                 (item_type,) = get_args(field_type)
 
@@ -242,25 +108,51 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
                         f"Expected list for field '{f.name}', got {type(field_value)}"
                     )
 
-                # Recursively load each element
-                kwargs[f.name] = [
-                    Doyles.dataclass_from_dict(item_type, item) for item in field_value
-                ]
+                if is_dataclass(item_type):
+                    kwargs[f.name] = [
+                        Doyles.dataclass_from_dict(item_type, item)
+                        for item in field_value
+                    ]
+                else:
+                    kwargs[f.name] = list(field_value)
                 continue
 
-            # Dict
+            # Dict[…]
             if origin is dict:
                 args = get_args(field_type)
                 key_type, val_type = args if args else (Any, Any)
-
-                if not isinstance(field_value, dict):
-                    raise TypeError(
-                        f"Expected dict for field '{f.name}', got {type(field_value)}"
-                    )
-
+                val_origin = get_origin(val_type)
                 result_dict = {}
+
                 for k, v in field_value.items():
-                    result_dict[k] = Doyles.dataclass_from_dict(val_type, v)
+                    if v is None:
+                        result_dict[k] = None
+                        continue
+
+                    # Dict[str, List[…]]
+                    if val_origin is list:
+                        (item_type,) = get_args(val_type)
+                        if not isinstance(v, list):
+                            raise TypeError(
+                                f"Expected list for dict key '{k}', got {type(v)}"
+                            )
+                        if is_dataclass(item_type):
+                            result_dict[k] = [
+                                Doyles.dataclass_from_dict(item_type, item)
+                                for item in v
+                            ]
+                        else:
+                            result_dict[k] = list(v)
+                        continue
+
+                    # Dict[str, Dataclass]
+                    if is_dataclass(val_type):
+                        result_dict[k] = Doyles.dataclass_from_dict(val_type, v)
+                        continue
+
+                    # Dict[str, scalar]
+                    result_dict[k] = v
+
                 kwargs[f.name] = result_dict
                 continue
 
@@ -270,6 +162,36 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
         # Instantiate the dataclass
         ctor = t_cls if isinstance(t_cls, type) else type(t_cls)
         return ctor(**kwargs)
+
+    # @staticmethod
+    # def dataclass_from_dict(t_cls: Union[Type[Any], Any], data: Any) -> Any:
+    #     """
+    #     Recursively convert a dict/list structure into a dataclass instance,
+    #     including nested dataclasses, lists, and dicts.
+
+    #     If a dataclass defines `from_raw(cls, raw)`, that is called instead of
+    #     automatic construction. This supports any nested structure (list, dict, etc.).
+    #     """
+    #     if data is None:
+    #         return None
+
+    #     # If the class defines from_raw, delegate entirely
+    #     if hasattr(t_cls, "from_raw") and callable(getattr(t_cls, "from_raw")):
+    #         return t_cls.from_raw(data)
+
+    #     # If not a dataclass, return as-is
+    #     if not is_dataclass(t_cls):
+    #         return data
+
+    #     # Otherwise, instantiate fields recursively
+    #     kwargs = {}
+    #     for f in fields(t_cls):
+    #         value = data.get(f.name)
+    #         kwargs[f.name] = Doyles.dataclass_from_dict(f.type, value)
+
+    #     # Instantiate the dataclass
+    #     ctor = t_cls if isinstance(t_cls, type) else type(t_cls)
+    #     return ctor(**kwargs)
 
     @staticmethod
     def flatten_dict(
