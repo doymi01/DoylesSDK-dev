@@ -3,6 +3,7 @@ from __future__ import annotations
 import getpass
 import logging
 import os
+import re
 from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import fields, is_dataclass
@@ -52,6 +53,14 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
 
     __slots__ = ()
     noop = NoOp()
+
+    # re_extract_from_rest_url = re.compile(
+    #     r"(?:https:\/\/(?P<host>(?:127\.0\.0\.1|[^\.]*)).*:\d+\/)?(?:servicesNS\/)?(?P<context>.*?)\/(?P<app>.*?)\/(?P<location>.*)\/(?P<instance>.*)"
+    # )
+
+    re_extract_from_rest_url = re.compile(
+        r"(?:https:\/\/(?P<host>(?:127\.0\.0\.1|[^\.]*)).*:\d+\/)?servicesNS\/(?P<context>[^\/]*?)\/(?P<app>[^\/]*?)\/(?P<location>.*)\/(?P<instance>.*)"
+    )
 
     @staticmethod
     def dataclass_from_dict(t_cls: Union[Any, Type[Any]], data: Any):
@@ -192,6 +201,29 @@ class Doyles(SingletonMixin, metaclass=InfoMeta):
     #     # Instantiate the dataclass
     #     ctor = t_cls if isinstance(t_cls, type) else type(t_cls)
     #     return ctor(**kwargs)
+
+    @staticmethod
+    def extract_from_rest_url(url: str) -> dict:
+        """
+        Extracts components from a Splunk REST URL using regex.
+
+        Args:
+            url (str): The REST URL to parse.
+
+        Returns:
+            dict: Dictionary of extracted components, or empty dict if not matched.
+
+            - host
+            - context
+            - app
+            - location
+            - instance
+
+        """
+        try:
+            return Doyles.re_extract_from_rest_url.search(url).groupdict()
+        except AttributeError:
+            return dict()
 
     @staticmethod
     def flatten_dict(
