@@ -511,7 +511,7 @@ class DoyleApp(metaclass=InfoMeta):
             return results
 
         if self.use_threads:
-            max_workers = min(self.args.thread_limit, self.THREAD_LIMIT)
+            max_workers = min(max_workers, self.args.thread_limit, self.THREAD_LIMIT)
             self.logger.notice("Running with thread pool (max_threads=%s)", max_workers)
         else:
             max_workers = min(max_workers, self.args.process_limit, self.PROCESS_LIMIT)
