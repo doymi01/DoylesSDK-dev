@@ -478,7 +478,7 @@ class DoyleApp(metaclass=InfoMeta):
         self,
         func,
         iterable: list,
-        max_workers: Optional[int] = None,
+        max_workers: Optional[int] = THREAD_LIMIT,
         exception_handler: Optional[Callable] = None,
     ) -> Optional[list]:
         """
