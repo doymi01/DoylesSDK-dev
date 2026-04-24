@@ -60,7 +60,7 @@ class GetIpList(DoyleApp):
             raise SystemExit(f"{self.args.fqdn} does not exist")
 
         # retrieves token from keyring or env or prompts once
-        token = self.secrets.get_secret("api_token", prompt="Enter API token: ")
+        # token = self.secrets.get_secret("api_token", prompt="Enter API token: ")
 
         # create your session with that token
         # session = SplunkSession(token=token)
