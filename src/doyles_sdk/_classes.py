@@ -554,10 +554,13 @@ class SplunkSession(DoyleClass, requests.Session):
         self.headers.update(
             {
                 "User-Agent": f"{name}/{self.__version__} ({'; '.join([self.__system__, self.__machine__])}) Python/{self.__python__}",  # pyright: ignore[reportArgumentType, reportCallIssue]
-                "Authorization": f"Bearer {token}",
+                # "Authorization": f"Bearer {token}",
                 "Accept": "application/json",
             }
         )
+        if token is not None:
+            self.set_token(token)
+
         self.verify = verify
 
         retry_strategy = Retry(
