@@ -33,7 +33,7 @@ jobs:
         run: python -m build --wheel
 
       - name: Upload built wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: built-wheels
           path: dist/*
@@ -47,7 +47,7 @@ jobs:
           echo "tag=$PRERELEASE_TAG" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Pre-Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.prerelease_tag.outputs.tag }}
           name: ${{ steps.prerelease_tag.outputs.tag }}
