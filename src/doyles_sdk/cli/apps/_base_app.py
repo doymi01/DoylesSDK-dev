@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import logging
 import multiprocessing as mp
@@ -469,10 +471,12 @@ class DoyleApp(metaclass=InfoMeta):
 
         if self._results_file_path:
             fh = self._get_file_handle(self._results_file_path)
-            with self.mp_lock:  # process-level safety
-                with self.thread_lock:  # thread-level safety
-                    fh.write(f"{json.dumps(result)}\n")
-                    fh.flush()
+            with (
+                self.mp_lock,
+                self.thread_lock,
+            ):  # process-level and thread-level safety
+                fh.write(f"{json.dumps(result)}\n")
+                fh.flush()
 
     def run_with_workers(
         self,
@@ -480,6 +484,9 @@ class DoyleApp(metaclass=InfoMeta):
         iterable: list,
         max_workers: Optional[int] = THREAD_LIMIT,
         exception_handler: Optional[Callable] = None,
+        expand_func: Optional[
+            Callable[[object], Iterable[tuple[Callable, object]]]
+        ] = None,
     ) -> Optional[list]:
         """
         Run tasks with multiprocessing if enabled, else inline.
