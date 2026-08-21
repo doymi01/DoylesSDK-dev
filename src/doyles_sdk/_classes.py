@@ -572,6 +572,7 @@ class SplunkSession(DoyleClass, requests.Session):
                 "GET",
                 "PUT",
                 "PATCH",
+                "POST",
                 "DELETE",
                 "OPTIONS",
                 "TRACE",
