@@ -564,7 +564,7 @@ class SplunkSession(DoyleClass, requests.Session):
         self.verify = verify
 
         retry_strategy = Retry(
-            total=10,  # Total retries
+            total=3,  # Total retries
             status_forcelist=[429, 500, 502, 503, 504],  # Status codes to retry on
             backoff_factor=1,  # Exponential backoff
             allowed_methods=[
