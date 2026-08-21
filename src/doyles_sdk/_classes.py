@@ -564,9 +564,9 @@ class SplunkSession(DoyleClass, requests.Session):
         self.verify = verify
 
         retry_strategy = Retry(
-            total=3,  # Total retries
+            total=10,  # Total retries
             status_forcelist=[429, 500, 502, 503, 504],  # Status codes to retry on
-            backoff_factor=1,  # Exponential backoff
+            backoff_factor=0.05,  # Exponential backoff
             allowed_methods=[
                 "HEAD",
                 "GET",
@@ -589,7 +589,7 @@ class SplunkSession(DoyleClass, requests.Session):
         #         return super().send(request, **kwargs)
 
         adapter = HTTPAdapter(
-            pool_connections=10, pool_maxsize=10, max_retries=retry_strategy
+            pool_connections=10, pool_maxsize=500, max_retries=retry_strategy
         )
         self.mount("http://", adapter)
         self.mount("https://", adapter)
