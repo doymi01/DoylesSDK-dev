@@ -589,7 +589,7 @@ class SplunkSession(DoyleClass, requests.Session):
         #         return super().send(request, **kwargs)
 
         adapter = HTTPAdapter(
-            pool_connections=10, pool_maxsize=50, max_retries=retry_strategy
+            pool_connections=10, pool_maxsize=10, max_retries=retry_strategy
         )
         self.mount("http://", adapter)
         self.mount("https://", adapter)
