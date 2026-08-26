@@ -9,6 +9,7 @@ import signal
 import sys
 import threading
 import time
+from collections.abc import Iterable
 from concurrent.futures import (
     FIRST_COMPLETED,
     ProcessPoolExecutor,
@@ -55,11 +56,11 @@ class DoyleApp(metaclass=InfoMeta):
     PROCESS_LIMIT = 100
 
     # --- Lazy ---
-    _thread_lock: Union[threading.Lock, None] = None
-    _mp_lock: Union[multiprocessing.synchronize.Lock, None] = None
-    _results_file_path: Union[os.PathLike, None] = None
+    _thread_lock: Union[threading.Lock, None] = None  # noqa: UP007
+    _mp_lock: Union[multiprocessing.synchronize.Lock, None] = None  # noqa: UP007
+    _results_file_path: Union[os.PathLike, None] = None  # noqa: UP007
 
-    def __init__(self, caller: Optional[str] = None, **kwargs):
+    def __init__(self, caller: Optional[str] = None, **kwargs):  # noqa: UP045
         self._exiting = False
         self._exit_lock = threading.Lock()
         self.caller = caller
@@ -250,7 +251,7 @@ class DoyleApp(metaclass=InfoMeta):
         # register_command(cmd_name, cls)
 
     @classmethod
-    def _build_parser(cls, prog: Optional[str] = None) -> argparse.ArgumentParser:
+    def _build_parser(cls, prog: Optional[str] = None) -> argparse.ArgumentParser:  # noqa: UP045
         """
         Build an argument parser for the CLI app.
 
@@ -265,7 +266,7 @@ class DoyleApp(metaclass=InfoMeta):
         parser.set_defaults(process_limit=cls.__cpu_count__)
         parser.set_defaults(thread_limit=100)
         parser.set_defaults(
-            start_time=datetime.today()
+            start_time=datetime.today()  # noqa: DTZ002
             .isoformat(sep="T", timespec="seconds")
             .replace(":", "-")
         )
@@ -364,7 +365,7 @@ class DoyleApp(metaclass=InfoMeta):
         return
 
     @classmethod
-    def get_usage(cls, prog: Optional[str] = None) -> str:
+    def get_usage(cls, prog: Optional[str] = None) -> str:  # noqa: UP045
         """Return a concise one-line usage string for this command."""
         parser = cls._build_parser()
         usage = parser.format_usage().strip()
@@ -457,7 +458,7 @@ class DoyleApp(metaclass=InfoMeta):
         """
         if not hasattr(self, "_fh"):
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            self._fh = open(path, "a", buffering=1)
+            self._fh = open(path, "a", buffering=1)  # noqa: SIM115
         return self._fh
 
     def log_result(self, result: dict) -> None:
@@ -482,12 +483,12 @@ class DoyleApp(metaclass=InfoMeta):
         self,
         func,
         iterable: list,
-        max_workers: Optional[int] = THREAD_LIMIT,
-        exception_handler: Optional[Callable] = None,
-        expand_func: Optional[
+        max_workers: Optional[int] = THREAD_LIMIT,  # noqa: UP045
+        exception_handler: Optional[Callable] = None,  # noqa: UP045
+        expand_func: Optional[  # noqa: UP045
             Callable[[object], Iterable[tuple[Callable, object]]]
         ] = None,
-    ) -> Optional[list]:
+    ) -> Optional[list]:  # noqa: UP045
         """
         Run tasks with multiprocessing if enabled, else inline.
 
@@ -510,10 +511,17 @@ class DoyleApp(metaclass=InfoMeta):
         if not self.use_multiprocessing and not self.use_threads:
             self.logger.notice("Running inline without multiprocessing")
             results = []
-            for item in iterable:
+            queue = [(func, item) for item in iterable]
+            while queue:
+                current_func, item = queue.pop(0)
                 try:
-                    results.append(func(item))
-                except Exception as e:
+                    result = current_func(item)
+                    results.append(result)
+                    if expand_func is not None:
+                        queue.extend(
+                            expand_func(result)
+                        )  # now yields (func, item) pairs
+                except Exception as e:  # noqa: BLE001
                     exception_handler(None, e, item)
             return results
 
@@ -547,11 +555,17 @@ class DoyleApp(metaclass=InfoMeta):
                     for future in done:
                         item = futures.pop(future)
                         try:
-                            results.append(future.result())
-                        except Exception as e:
+                            result = future.result()
+                            results.append(result)
+                            if expand_func is not None:
+                                for child_func, child_item in expand_func(result):
+                                    futures[pool.submit(child_func, child_item)] = (
+                                        child_item
+                                    )
+                        except Exception as e:  # noqa: BLE001
                             exception_handler(future, e, item)
 
-                    time.sleep(0.01)  # tiny sleep to reduce CPU and signal noise
+                    # time.sleep(0.01)  # tiny sleep to reduce CPU and signal noise
 
             except KeyboardInterrupt:
                 self.logger.warning(
