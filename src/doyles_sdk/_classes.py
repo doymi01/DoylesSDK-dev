@@ -540,6 +540,7 @@ class SplunkSession(DoyleClass, requests.Session):
         token: Optional[str] = None,
         name: Optional[str] = None,
         verify: Union[bool, str] = False,
+        include_post: Optional[bool] = False
     ):
         from requests.adapters import HTTPAdapter
         from urllib3.exceptions import InsecureRequestWarning
@@ -563,19 +564,24 @@ class SplunkSession(DoyleClass, requests.Session):
 
         self.verify = verify
 
+        _allowed_methods=[
+            "HEAD",
+            "GET",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "OPTIONS",
+            "TRACE",
+        ]
+
+        if include_post:
+            _allowed_methods.append("POST")
+
         retry_strategy = Retry(
             total=10,  # Total retries
             status_forcelist=[429, 500, 502, 503, 504],  # Status codes to retry on
             backoff_factor=0.05,  # Exponential backoff
-            allowed_methods=[
-                "HEAD",
-                "GET",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS",
-                "TRACE",
-            ],
+            allowed_methods=_allowed_methods,
         )
 
         # class SafeLoggingAdapter(HTTPAdapter):
