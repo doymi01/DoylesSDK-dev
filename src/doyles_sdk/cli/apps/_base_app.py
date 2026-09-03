@@ -518,7 +518,8 @@ class DoyleApp(metaclass=InfoMeta):
                 try:
                     result = current_func(item)
                     results.append(result)
-                    result_func(result)
+                    if result_func is not None:
+                        result_func(result)
                     if expand_func is not None:
                         queue.extend(
                             expand_func(result)
@@ -559,7 +560,8 @@ class DoyleApp(metaclass=InfoMeta):
                         try:
                             result = future.result()
                             results.append(result)
-                            result_func(result)
+                            if result_func is not None:
+                                result_func(result)
                             if expand_func is not None:
                                 for child_func, child_item in expand_func(result):
                                     futures[pool.submit(child_func, child_item)] = (
