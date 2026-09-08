@@ -482,13 +482,13 @@ class DoyleApp(metaclass=InfoMeta):
     def run_with_workers(
         self,
         func,
-        iterable: list,
+        iterable: Union[list, Iterable],
         max_workers: Optional[int] = THREAD_LIMIT,  # noqa: UP045
         exception_handler: Optional[Callable] = None,  # noqa: UP045
         expand_func: Optional[  # noqa: UP045
             Callable[[object], Iterable[tuple[Callable, object]]]
         ] = None,
-        result_func: Optional[Callable, object] = None
+        result_func: Optional[tuple[Callable, object]] = None
     ) -> Optional[list]:  # noqa: UP045
         """
         Run tasks with multiprocessing if enabled, else inline.
@@ -509,11 +509,32 @@ class DoyleApp(metaclass=InfoMeta):
 
             exception_handler = default_handler
 
+        # Safely turns lists into iterators, or keeps iterators as iterators.
+        # This prevents the loop from exhausting or duplicating memory upfront.
+        data_iter = iter(iterable)
+
         if not self.use_multiprocessing and not self.use_threads:
             self.logger.notice("Running inline without multiprocessing")
             results = []
-            queue = [(func, item) for item in iterable]
-            while queue:
+            queue = []
+
+            # Prime the queue with the first item to start the loop safely
+            try:
+                queue.append((func, next(data_iter)))
+            except StopIteration:
+                pass
+
+            while queue or data_iter:
+                # Keep queue populated if expand_func is used
+                while len(queue) < 100:
+                    try:
+                        queue.append((func, next(data_iter)))
+                    except StopIteration:
+                        break
+                
+                if not queue:
+                    break
+
                 current_func, item = queue.pop(0)
                 try:
                     result = current_func(item)
@@ -547,13 +568,27 @@ class DoyleApp(metaclass=InfoMeta):
                 self.args.prog,
                 self.class_name,
             )
-
+        results = []
         with self.mp_model(max_workers=max_workers, **kwargs) as pool:
-            futures = {pool.submit(func, item): item for item in iterable}
-            results = []
+            futures = dict()
+            # Sliding Window Buffer Size (Keep workers fed without flooding RAM)
+            buffer_size = max_workers * 3
+
             try:
-                # Use a small timeout loop to check futures and catch KeyboardInterrupt cleanly
-                while futures:
+                running = True
+                while running or futures:
+                    # 1. Fill the buffer window lazily from our stream
+                    while len(futures) < buffer_size and running:
+                        try:
+                            item = next(data_iter)
+                            futures[pool.submit(func, item)] = item
+                        except StopIteration:
+                            running = False  # Generator/List exhausted
+                    
+                    if not futures:
+                        break
+
+                    # 2. Wait for at least one worker to finish
                     done, _ = wait(futures, timeout=0.1, return_when=FIRST_COMPLETED)
                     for future in done:
                         item = futures.pop(future)
@@ -569,8 +604,6 @@ class DoyleApp(metaclass=InfoMeta):
                                     )
                         except Exception as e:  # noqa: BLE001
                             exception_handler(future, e, item)
-
-                    # time.sleep(0.01)  # tiny sleep to reduce CPU and signal noise
 
             except KeyboardInterrupt:
                 self.logger.warning(
