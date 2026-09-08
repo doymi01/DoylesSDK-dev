@@ -572,7 +572,7 @@ class DoyleApp(metaclass=InfoMeta):
         with self.mp_model(max_workers=max_workers, **kwargs) as pool:
             futures = dict()
             # Sliding Window Buffer Size (Keep workers fed without flooding RAM)
-            buffer_size = max_workers * 3
+            buffer_size = max_workers * 5
 
             try:
                 running = True
