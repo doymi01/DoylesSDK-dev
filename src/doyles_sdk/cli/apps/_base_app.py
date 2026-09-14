@@ -620,7 +620,7 @@ class DoyleApp(metaclass=InfoMeta):
                 pool.shutdown(wait=False)
                 return None
 
-        logger.notice("%s results in list", len(results))
+        self.logger.notice("%s results in list", len(results))
         return results
 
     def shutdown_logging(self) -> None:
