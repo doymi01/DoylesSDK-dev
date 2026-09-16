@@ -71,7 +71,7 @@ class DoyleApp(metaclass=InfoMeta):
         self.class_name = self.__class__.__name__
         self._secrets = None
 
-        parser = self._build_parser()
+        parser = self._build_parser(prog=self.command_name)
         self.args = parser.parse_args()
         self.args.log_level = "DEBUG" if self.args.debug else self.args.log_level
         self.args_post_process(parser)
